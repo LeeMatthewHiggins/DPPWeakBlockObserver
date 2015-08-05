@@ -12,16 +12,17 @@
 
 @implementation NSObject(DPPWeakBlockObserver)
 
+
 -(DPPWeakBlockObserver*)blockObserveIncludingProperties:(NSArray*)properyNames
-                                     withBlock:(void (^)(id object))block
+                                              withBlock:(void (^)(id object))block
 {
     return [DPPWeakBlockObserver blockObserverObservingObject:self
-                                           includingProperties:properyNames
+                                          includingProperties:properyNames
                                                     withBlock:block];
 }
 
 -(DPPWeakBlockObserver*)blockObserveExcludingProperties:(NSArray*)properyNames
-                                     withBlock:(void (^)(id object))block
+                                              withBlock:(void (^)(id object))block
 {
     return [DPPWeakBlockObserver blockObserverObservingObject:self
                                           excludingProperties:properyNames
@@ -34,9 +35,15 @@
                                        withBlock:block];
 }
 
--(NSArray*)propertyNames
-{//LH little bit of dirty runtime code
+
+-(NSArray*)dpp_PropertyNamesForClass:(Class)class
+{
     NSMutableArray* propertyNames = [NSMutableArray new];
+    
+    if([class superclass])
+    {
+        [propertyNames addObjectsFromArray:[self dpp_PropertyNamesForClass:[class superclass]]];
+    }
     
     unsigned int outCount, i;
     objc_property_t *properties = class_copyPropertyList([self class], &outCount);
@@ -52,53 +59,56 @@
     return propertyNames;
 }
 
+-(NSArray*)dpp_PropertyNames
+{
+    return [self dpp_PropertyNamesForClass:[self class]];
+}
+
 @end
 
 @implementation DPPWeakBlockObserver
 
+@synthesize block = _block;
+
 +(instancetype)blockObserverObservingObject:(id)object withBlock:(void (^)(id object))block
 {
-    return [[DPPWeakBlockObserver alloc] initObservingObject:object withBlock:block];
+    return [[DPPWeakBlockObserver alloc] initWithObservingObject:object withBlock:block];
 }
 
 +(instancetype)blockObserverObservingObject:(id)object
-                         includingProperties:(NSArray*)properyNames
-                                  withBlock:(void (^)(id object))block
+                        includingProperties:(NSArray*)properyNames
+                                  withBlock:(DPPSimpleBlock)block
 {
-    return [[DPPWeakBlockObserver alloc] initObservingObject:object
-                                      includingProperties:properyNames
-                                               withBlock:block];
+    return [[DPPWeakBlockObserver alloc] initWithObservingObject:object
+                                             includingProperties:properyNames
+                                                       withBlock:block];
 }
 
 +(instancetype)blockObserverObservingObject:(id)object
                         excludingProperties:(NSArray*)properyNames
-                                  withBlock:(void (^)(id object))block
+                                  withBlock:(DPPSimpleBlock)block
 {
-    return [[DPPWeakBlockObserver alloc] initObservingObject:object
-                                          excludingProperties:properyNames
-                                                   withBlock:block];
+    return [[DPPWeakBlockObserver alloc] initWithObservingObject:object
+                                             excludingProperties:properyNames
+                                                       withBlock:block];
 }
 
 
--(instancetype)initObservingObject:(id)object withBlock:(void (^)(id object))block
+-(instancetype)initWithObservingObject:(id)object withBlock:(DPPSimpleBlock)block
 {
-    return [self initObservingObject:object
-                  includingProperties:nil
-                           withBlock:block];
+    return [self initWithObservingObject:object
+                     includingProperties:nil
+                               withBlock:block];
 }
 
--(instancetype)initObservingObject:(id)object
-                includingProperties:(NSArray*)properyNames
-                         withBlock:(void (^)(id object))block
+-(instancetype)initWithObservingObject:(id)object
+                   includingProperties:(NSArray*)properyNames
+                             withBlock:(DPPSimpleBlock)block
 {
-    if(object == nil)
-    {
-        return nil;
-    }
     self = [super init];
     if(self)
     {
-        self.block = block;
+        _block = [block copy];
         _object = object;
         _observingProperies = properyNames;
         [self observeProperties];
@@ -106,36 +116,26 @@
     return self;
 }
 
--(instancetype)initObservingObject:(id)object
-               excludingProperties:(NSArray*)properyNames
-                         withBlock:(void (^)(id object))block
+-(instancetype)initWithObservingObject:(id)object
+                   excludingProperties:(NSArray*)properyNames
+                             withBlock:(DPPSimpleBlock)block
 {
-    NSMutableArray* propertiesToObserve = [object propertyNames].mutableCopy;
+    NSMutableArray* propertiesToObserve = [object dpp_PropertyNames].mutableCopy;
     [propertiesToObserve removeObjectsInArray:properyNames];
-    return [self initObservingObject:object
-                 includingProperties:propertiesToObserve
-                           withBlock:block];
+    return [self initWithObservingObject:object
+                     includingProperties:propertiesToObserve
+                               withBlock:block];
 }
 
 
--(NSString*)propertyNameFromObject:(id)object
-{
-    if([object isKindOfClass:[NSString class]])
-    {
-        return object;
-    }
-    return nil;
-}
 
 -(void)observeProperties
 {
     for(id property in [self observingProperties])
     {
-        NSString* propertyName = [self propertyNameFromObject:property];
-        if(propertyName)
-        {
-            [_object addObserver:self forKeyPath:propertyName options:0 context:nil];
-        }
+        NSAssert([property isKindOfClass:[NSString class]],@"Properties must be specified with strings");
+        [_object addObserver:self forKeyPath:property options:0 context:nil];
+        
     }
 }
 
@@ -143,16 +143,17 @@
 {
     for(id property in [self observingProperties])
     {
-        NSString* propertyName = [self propertyNameFromObject:property];
-        if(propertyName)
-        {
-            [_object removeObserver:self forKeyPath:propertyName context:nil];
-        }
+        NSAssert([property isKindOfClass:[NSString class]],@"Properties must be specified with strings");
+        [_object removeObserver:self forKeyPath:property context:nil];
     }
 }
 
 -(void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
+    NSAssert(NSThread.isMainThread,
+             @"This class is designed to be used on the main thread only. %@",
+             [NSThread callStackSymbols]);
+    
     if(!_signalChangeNextRunloop) // protect against multiple call per runloop cycle....
     {//if we're not already about to signal a change, do it
         _signalChangeNextRunloop = YES;
@@ -160,7 +161,9 @@
             if(!_paused)
             {
                 if(_block)
+                {
                     _block(_object);
+                }
             }
             _signalChangeNextRunloop = NO;
         });
@@ -191,7 +194,7 @@
 {
     if(_observingProperies == nil)
     {//LH default to all
-        _observingProperies = [_object propertyNames];
+        _observingProperies = [_object dpp_PropertyNames];
     }
     return _observingProperies;
 }

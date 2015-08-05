@@ -14,34 +14,37 @@
 
 #import <Foundation/Foundation.h>
 
+
+typedef  void (^DPPSimpleBlock)(__nullable id object);
+
 @interface DPPWeakBlockObserver : NSObject
 
-@property (nonatomic, copy)     void (^block)(id object);
-@property (nonatomic, readonly) id object;
-@property (nonatomic,readonly)  NSArray* observingProperties;
-@property (nonatomic,readonly)  BOOL  paused;
+@property (nonatomic,readonly)      DPPSimpleBlock __nonnull block;
+@property (nonatomic,readonly)      id __nullable object;
+@property (nonatomic,readonly)      NSArray* __nullable observingProperties;
+@property (nonatomic,readonly)      BOOL  paused;
 
-+(instancetype)blockObserverObservingObject:(id)object
-                                  withBlock:(void (^)(id object))block;
++(nullable instancetype)blockObserverObservingObject:(__nonnull id)object
+                                           withBlock:(__nonnull DPPSimpleBlock)block;
 
-+(instancetype)blockObserverObservingObject:(id)object
-                         includingProperties:(NSArray*)properyNames
-                                  withBlock:(void (^)(id object))block;
++(nullable instancetype)blockObserverObservingObject:(id __nonnull)object
+                                 includingProperties:(NSArray* __nullable)properyNames
+                                           withBlock:(DPPSimpleBlock __nonnull)block;
 
-+(instancetype)blockObserverObservingObject:(id)object
-                         excludingProperties:(NSArray*)properyNames
-                                  withBlock:(void (^)(id object))block;
++(nullable instancetype)blockObserverObservingObject:(id __nonnull)object
+                                 excludingProperties:(NSArray* __nullable)properyNames
+                                           withBlock:(DPPSimpleBlock __nonnull)block;
 
--(instancetype)initObservingObject:(id)object
-                         withBlock:(void (^)(id object))block;
+-(nullable instancetype)initWithObservingObject:(id __nonnull)object
+                                      withBlock:(DPPSimpleBlock __nonnull)block;
 
--(instancetype)initObservingObject:(id)object
-                includingProperties:(NSArray*)properyNames
-                         withBlock:(void (^)(id object))block;
+-(nullable instancetype)initWithObservingObject:(id __nonnull)object
+                            includingProperties:(NSArray* __nullable)properyNames
+                                      withBlock:(DPPSimpleBlock __nonnull)block NS_DESIGNATED_INITIALIZER;
 
--(instancetype)initObservingObject:(id)object
-                excludingProperties:(NSArray*)properyNames
-                         withBlock:(void (^)(id object))block;
+-(nullable instancetype)initWithObservingObject:(id __nonnull)object
+                            excludingProperties:(NSArray* __nullable)properyNames
+                                      withBlock:(DPPSimpleBlock __nonnull)block;
 
 -(void)pause; //stop block callback
 -(void)resume; //resume block callback
@@ -50,12 +53,12 @@
 
 @interface NSObject(DPPWeakBlockObserver)
 
--(DPPWeakBlockObserver*)blockObserveIncludingProperties:(NSArray*)properyNames
-                                withBlock:(void (^)(id object))block;
+-(nullable DPPWeakBlockObserver*)blockObserveIncludingProperties:(NSArray* __nullable)properyNames
+                                                       withBlock:(DPPSimpleBlock __nonnull)block;
 
--(DPPWeakBlockObserver*)blockObserveExcludingProperties:(NSArray*)properyNames
-                                              withBlock:(void (^)(id object))block;
+-(nullable DPPWeakBlockObserver*)blockObserveExcludingProperties:(NSArray* __nullable)properyNames
+                                                       withBlock:(DPPSimpleBlock __nonnull)block;
 
--(DPPWeakBlockObserver*)blockObservePropertiesWithBlock:(void (^)(id object))block;
+-(nullable DPPWeakBlockObserver*)blockObservePropertiesWithBlock:(DPPSimpleBlock __nonnull)block;
 
 @end

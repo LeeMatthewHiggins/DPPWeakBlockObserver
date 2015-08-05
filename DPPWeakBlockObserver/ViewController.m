@@ -17,7 +17,8 @@
 
 @implementation ViewController
 
-- (void)viewDidLoad {
+- (void)viewDidLoad
+{
     [super viewDidLoad];
     
     __block typeof(self) weakSelf = self;
